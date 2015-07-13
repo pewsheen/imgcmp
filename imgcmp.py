@@ -1,4 +1,3 @@
-
 from PIL import Image, ImageChops, ImageDraw
 from time import localtime, strftime
 import sys
@@ -303,7 +302,7 @@ if __name__ == '__main__':
 				if diffPercentage > 10:
 					# Hightlight diff & save
 					c = black_or_b(images[test_img], images[target_img])
-					print resultDir
+					resultDir = os.path.split(result_img)[0]
 					if not os.path.exists(resultDir):
 						os.makedirs(resultDir)
 					c.save(result_img)
