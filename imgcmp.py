@@ -1,5 +1,6 @@
 
 from PIL import Image, ImageChops, ImageDraw
+from time import localtime, strftime
 import sys
 import math
 import Levenshtein
@@ -235,7 +236,6 @@ def black_or_b(a, b, opacity=0.2):
 
 	# A or B
 	diff = ImageChops.difference(a_new, b_new)
-	# diff = diff.convert('L')
 
 	# Show diff
 	new = Image.new('RGB', (max_width,max_height),(255,0,255))
@@ -253,12 +253,24 @@ if __name__ == '__main__':
 
 	total_file_number = len(matches)
 
+	# Create log file
+	logTime = strftime("%Y-%m-%d_%H_%M_%S", localtime())
+	os.makedirs(logTime)
+
+	logFileName = strftime(".\\"+logTime+"\\log.txt")
+	logFile = open(logFileName, 'w')
+	logFile.close()
+	logErrorFileName = strftime(".\\"+logTime+"\\log_err.txt")
+	logErrorFile = open(logErrorFileName, 'w')
+	logErrorFile.close()
+
+	# Open comparing images
 	for test_img in matches:
 		# This number is used to calculate the progress percentage.
 		current_file_number = current_file_number + 1
 
 		target_img = test_img.replace("test_case", "sample_case")
-		result_img = test_img.replace("test_case", "result")
+		result_img = test_img.replace("compare\\test_case", logTime)
 
 		# Check compare image existence
 		if not os.path.isfile(target_img) or not os.path.isfile(test_img):
@@ -288,19 +300,24 @@ if __name__ == '__main__':
 				diffPercentage = 100-res
 
 				# If difference large than (4 %), log & save diff picture.
-				if diffPercentage > 4:
+				if diffPercentage > 10:
 					# Hightlight diff & save
 					c = black_or_b(images[test_img], images[target_img])
-					resultDir = os.path.split(result_img)[0]
+					print resultDir
 					if not os.path.exists(resultDir):
-					    os.makedirs(resultDir)
+						os.makedirs(resultDir)
 					c.save(result_img)
 
 					# Print log
 					completeness = (float)(current_file_number)/total_file_number * 100
 					compareFile = re.sub('(\A.*?case\\\)', '', imgs[0])
-					print '[%3.0f%%] [Diff: %5.2f%%] %s' % (completeness, diffPercentage, compareFile)
+					log = '[%3.0f%%] [Diff: %5.2f%%] %s\n' % (completeness, diffPercentage, compareFile)
+
+					with open(logFileName, "a") as logFile:
+						logFile.write(log)
 			except:
 				etype, message, traceback = sys.exc_info()
-				print "[ERROR] <%s>: %s" % (etype, message)
+				logError = "[ERROR] <%s>: %s\n" % (etype, message)
+				with open(logErrorFileName, "a") as logFile:
+						logFile.write(logError)
 				continue
