@@ -1,4 +1,4 @@
-from PIL import Image, ImageChops, ImageDraw
+from PIL import Image
 from time import localtime, strftime
 import sys
 import math
@@ -6,6 +6,8 @@ import Levenshtein
 import fnmatch
 import os
 import re
+import numpy
+import cv2
 
 class BWImageCompare(object):
 	"""Compares two images (b/w)."""
@@ -218,29 +220,6 @@ class FuzzyImageCompare(object):
 		return lnrmsd
 		return min(lnrmsd * cmp['psnr'] / self._tol, 100.0)  # TODO: fix psnr!
 
-def black_or_b(a, b, opacity=0.2):
-	a_width, a_height = a.size
-	b_width, b_height = b.size
-	max_width = (a_width if (a_width > b_width) else b_width)
-	max_height = (a_height if (a_height > b_height) else b_height)
-
-	a_new = Image.new('RGB', (max_width,max_height), "green")
-	b_new = Image.new('RGB', (max_width,max_height), "blue")
-
-	a_new.paste(a,(0,0))
-	b_new.paste(b,(0,0))
-
-	a_new = a_new.convert('L')
-	b_new = b_new.convert('L')
-
-	# A or B
-	diff = ImageChops.difference(a_new, b_new)
-
-	# Show diff
-	new = Image.new('RGB', (max_width,max_height),(255,0,255))
-	new.paste(diff, mask=b_new)
-	return new
-
 if __name__ == '__main__':
 	point_table = ([0] + ([255] * 255))
 	matches = []
@@ -277,6 +256,7 @@ if __name__ == '__main__':
 			continue
 		else:
 			try:
+			
 				images = {}
 				images[test_img] = Image.open(test_img)
 				images[target_img] = Image.open(target_img)
@@ -299,19 +279,26 @@ if __name__ == '__main__':
 				diffPercentage = 100-res
 
 				# If difference large than (4 %), log & save diff picture.
-				if diffPercentage > 10:
+				if diffPercentage > 0:
 					# Hightlight diff & save
-					c = black_or_b(images[test_img], images[target_img])
 					resultDir = os.path.split(result_img)[0]
 					if not os.path.exists(resultDir):
 						os.makedirs(resultDir)
-					c.save(result_img)
+					im = cv2.imread(test_img)
+					im1 = cv2.imread(target_img)
+
+					imgray = cv2.cvtColor(im,cv2.COLOR_BGR2GRAY)
+					ret,thresh = cv2.threshold(imgray,127,255,0)
+					image, contours, hierarchy = cv2.findContours(thresh,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
+
+					cv2.drawContours(im1, contours, -1, (255,0,255), 1)
+					cv2.imwrite(result_img, im1)
 
 					# Print log
 					completeness = (float)(current_file_number)/total_file_number * 100
 					compareFile = re.sub('(\A.*?case\\\)', '', imgs[0])
 					log = '[%3.0f%%] [Diff: %5.2f%%] %s\n' % (completeness, diffPercentage, compareFile)
-
+					print log
 					with open(logFileName, "a") as logFile:
 						logFile.write(log)
 			except:
